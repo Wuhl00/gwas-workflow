@@ -1,0 +1,161 @@
+Bootstrap: localimage
+From: /home/ug2284/workspace/gwas_snakemake/singularity/library_default_ubuntu.sif
+
+%labels
+    Author      HollandWu
+    Version     1.0.0
+    Description GWAS container: TASSEL/Beagle/VCFtools/BCFtools/PLINK/ADMIXTURE/VCF2PCACluster
+
+%environment
+    export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+    export PATH=$JAVA_HOME/bin:$PATH
+    export TASSEL_HOME=/opt/tassel/current
+    export PATH=$TASSEL_HOME:$PATH
+    export BEAGLE_JAR=/opt/beagle/beagle.27Jan18.7e1.jar
+    export PATH=/opt/vcftools/bin:$PATH
+    export PERL5LIB=/opt/vcftools/share/perl5:$PERL5LIB
+    export PATH=/opt/plink:$PATH
+    export PATH=/opt/admixture:$PATH
+    export PATH=/opt/vcf2pcacluster/bin:$PATH
+    export PATH=/opt/conda/bin:$PATH
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+
+%files
+    /home/ug2284/workspace/gwas_snakemake/singularity/downloads/htslib-1.17.tar.bz2             /opt/downloads/htslib-1.17.tar.bz2
+    /home/ug2284/workspace/gwas_snakemake/singularity/downloads/bcftools-1.17.tar.bz2           /opt/downloads/bcftools-1.17.tar.bz2
+    /home/ug2284/workspace/gwas_snakemake/singularity/downloads/vcftools-0.1.16.tar.gz          /opt/downloads/vcftools-0.1.16.tar.gz
+    /home/ug2284/workspace/gwas_snakemake/singularity/downloads/plink_linux_x86_64_20231211.zip /opt/downloads/plink_linux_x86_64_20231211.zip
+    /home/ug2284/workspace/gwas_snakemake/singularity/downloads/admixture_linux-1.3.0.tar.gz    /opt/downloads/admixture_linux-1.3.0.tar.gz
+    /home/ug2284/workspace/gwas_snakemake/singularity/downloads/tassel5.zip                     /opt/downloads/tassel5.zip
+    /home/ug2284/workspace/gwas_snakemake/singularity/downloads/beagle.27Jan18.7e1.jar          /opt/downloads/beagle.27Jan18.7e1.jar
+    /home/ug2284/workspace/gwas_snakemake/singularity/downloads/micromamba.tar.bz2              /opt/downloads/micromamba.tar.bz2
+    /home/ug2284/workspace/gwas_snakemake/singularity/downloads/VCF2PCACluster.tar.gz           /opt/downloads/VCF2PCACluster.tar.gz
+
+%post
+    set -eu
+    export DEBIAN_FRONTEND=noninteractive
+
+    # ════════════════════════════════════════════════
+    #  1. 系统依赖
+    # ════════════════════════════════════════════════
+    apt-get update && apt-get install -y --no-install-recommends openjdk-11-jre-headless perl build-essential g++ zlib1g zlib1g-dev libbz2-dev liblzma-dev libcurl4-openssl-dev libssl-dev libgomp1 autoconf automake unzip pkg-config && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+    # ════════════════════════════════════════════════
+    #  2. htslib 1.17  →  解压目录: htslib-1.17/
+    # ════════════════════════════════════════════════
+    cd /tmp
+    tar -xjf /opt/downloads/htslib-1.17.tar.bz2
+    cd htslib-1.17
+    ./configure --prefix=/usr/local
+    make -j4 && make install
+    cd /tmp && rm -rf htslib-1.17
+
+    # ════════════════════════════════════════════════
+    #  3. BCFtools 1.17  →  解压目录: bcftools-1.17/
+    # ════════════════════════════════════════════════
+    cd /tmp
+    tar -xjf /opt/downloads/bcftools-1.17.tar.bz2
+    cd bcftools-1.17
+    ./configure --prefix=/usr/local
+    make -j4 && make install
+    cd /tmp && rm -rf bcftools-1.17
+    bcftools --version | head -1
+
+    # ════════════════════════════════════════════════
+    #  4. VCFtools 0.1.16  →  解压目录: vcftools-0.1.16/
+    # ════════════════════════════════════════════════
+    mkdir -p /opt/vcftools
+    cd /tmp
+    tar -xzf /opt/downloads/vcftools-0.1.16.tar.gz
+    cd vcftools-0.1.16
+    ./configure --prefix=/opt/vcftools
+    make -j4 && make install
+    cd /tmp && rm -rf vcftools-0.1.16
+    /opt/vcftools/bin/vcftools --version
+
+    # ════════════════════════════════════════════════
+    #  5. PLINK v1.90b6.21
+    # ════════════════════════════════════════════════
+    mkdir -p /opt/plink
+    unzip -q /opt/downloads/plink_linux_x86_64_20231211.zip plink -d /opt/plink/
+    chmod +x /opt/plink/plink
+    /opt/plink/plink --version | head -1
+
+    # ════════════════════════════════════════════════
+    #  6. ADMIXTURE 1.3.0  →  解压目录: dist/admixture_linux-1.3.0/
+    # ════════════════════════════════════════════════
+    mkdir -p /opt/admixture
+    cd /tmp
+    tar -xzf /opt/downloads/admixture_linux-1.3.0.tar.gz
+    cp dist/admixture_linux-1.3.0/admixture /opt/admixture/admixture
+    chmod +x /opt/admixture/admixture
+    rm -rf dist/
+    /opt/admixture/admixture 2>&1 | head -1 || true
+
+    # ════════════════════════════════════════════════
+    #  7. TASSEL 5  →  解压目录: tasseladmin-tassel-5-standalone-92aa00d5b2c7/
+    # ════════════════════════════════════════════════
+    mkdir -p /opt/tassel
+    unzip -q /opt/downloads/tassel5.zip -d /opt/tassel/
+    chmod +x /opt/tassel/tasseladmin-tassel-5-standalone-92aa00d5b2c7/run_pipeline.pl
+    ln -s /opt/tassel/tasseladmin-tassel-5-standalone-92aa00d5b2c7 /opt/tassel/current
+    perl /opt/tassel/current/run_pipeline.pl 2>&1 | head -2 || true
+
+    # ════════════════════════════════════════════════
+    #  8. Beagle 5.1
+    # ════════════════════════════════════════════════
+    mkdir -p /opt/beagle
+    cp /opt/downloads/beagle.27Jan18.7e1.jar /opt/beagle/beagle.27Jan18.7e1.jar
+    java -jar /opt/beagle/beagle.27Jan18.7e1.jar 2>&1 | head -2 || true
+
+    # ════════════════════════════════════════════════
+    #  9. VCF2PCACluster  →  解压目录: VCF2PCACluster/
+    # ════════════════════════════════════════════════
+    cd /opt
+    tar -xzf /opt/downloads/VCF2PCACluster.tar.gz
+    mv VCF2PCACluster /opt/vcf2pcacluster
+    chmod 755 -R /opt/vcf2pcacluster/bin/
+    /opt/vcf2pcacluster/bin/VCF2PCACluster -h 2>&1 | head -2 || true
+
+    # ════════════════════════════════════════════════
+    #  10. micromamba + R 4.3 + Python 3.11
+    # ════════════════════════════════════════════════
+    tar -xjf /opt/downloads/micromamba.tar.bz2 -C /tmp
+    install -m 755 /tmp/bin/micromamba /usr/local/bin/micromamba
+    rm -rf /tmp/bin
+    export MAMBA_ROOT_PREFIX=/opt/conda
+    micromamba install -y -n base -c conda-forge -c bioconda r-base=4.3 r-data.table r-ggplot2 r-scatterplot3d python=3.11 pip snakemake=8.20.1
+    micromamba clean --all --yes
+
+    /opt/conda/bin/Rscript -e "options(repos=c(CRAN='https://cloud.r-project.org'));install.packages('CMplot',Ncpus=4)"
+    /opt/conda/bin/Rscript -e "for(p in c('CMplot','ggplot2','scatterplot3d')){library(p,character.only=TRUE);cat(p,'OK\n')}"
+
+    # ════════════════════════════════════════════════
+    #  11. Snakemake
+    # ════════════════════════════════════════════════
+    /opt/conda/bin/snakemake --version
+
+    # ════════════════════════════════════════════════
+    #  12. 清理
+    # ════════════════════════════════════════════════
+    rm -rf /opt/downloads
+    mkdir -p /workspace
+    echo "=== Build complete ==="
+
+%runscript
+    exec "$@"
+
+%test
+    echo "=== Self-test ==="
+    /opt/vcftools/bin/vcftools --version
+    bcftools --version | head -1
+    /opt/plink/plink --version | head -1
+    /opt/admixture/admixture 2>&1 | head -1 || true
+    java -jar /opt/beagle/beagle.27Jan18.7e1.jar 2>&1 | head -2 || true
+    perl /opt/tassel/current/run_pipeline.pl 2>&1 | head -2 || true
+    /opt/vcf2pcacluster/bin/VCF2PCACluster -h 2>&1 | head -2 || true
+    /opt/conda/bin/Rscript -e "library(CMplot);cat('CMplot OK\n')"
+    /opt/conda/bin/snakemake --version
+    echo "=== Self-test done ==="
+
