@@ -64,7 +64,7 @@ The pipeline auto-detects trait names from the phenotype file header — no manu
 All parameters are set in `config.yaml`. Key fields:
 
 ```yaml
-container: "path/to/your.sif"       # Singularity image
+container: "path/to/.sif or pull"       # Singularity image
 tmpdir: "/tmp"
 
 project:
